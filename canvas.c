@@ -4,25 +4,27 @@
 
 WINDOW *new_canvas(int size_x, int size_y, int *canvas_height, int *canvas_width, char canvas[C_SIZE][C_SIZE])
 {
+    // prompts the user to select a size for the new canvas and initializes it
+    
     echo();
     WINDOW *size_prompt = newwin(4, 26, (size_y-2)/2, (size_x-26)/2);
     box(size_prompt, 0, 0);
 
-    //prompts the user for the size of the new canvas
+    // size prompt
     mvwprintw(size_prompt, 1, 1, "Enter canvas size: ");
     wscanw(size_prompt, "%d %d", canvas_height, canvas_width);
     erase();
     refresh();
 
-    //clears the array 
+    // clears the array 
     for (int i = 0; i < C_SIZE; i++)
     {
         for (int j = 0; j < C_SIZE; j++)
         {
-            canvas[i][j] = 0x20; //should be 0x20 for space
+            canvas[i][j] = 0x20; // should be 0x20 for space
         }
     }
-    //??
+    // ??
     WINDOW *local_canvas;
     local_canvas = newwin(*canvas_height+2, *canvas_width+2, (size_y-*canvas_height)/2, (size_x-*canvas_width)/2);
     box(local_canvas, 0, 0);
@@ -41,14 +43,16 @@ WINDOW *new_canvas(int size_x, int size_y, int *canvas_height, int *canvas_width
 
 void init_menu(int size_x, int size_y, int canvas_height, int canvas_width, char ascii_list[], int current_char, int line_1_x, int line_1_y, int line_2_x, int line_2_y)
 {
-    //top bar
+    // initializes/refreshes all the menu elements (rename to update_menu?)
+    
+    // top bar
     WINDOW *menu = newwin(1, size_x, 0, 0);
 
     wattr_on(menu, A_STANDOUT, NULL);
     wprintw(menu, "Size: %dx%d | (F1) New Canvas | (B)rush | (L)ine | Line: %d %d - %d %d", canvas_height, canvas_width, line_1_x, line_1_y, line_2_x, line_2_y);
     wrefresh(menu);
 
-    //character picker
+    // character picker
     WINDOW *picker = newwin((93 / (size_y-2))+2, size_x-2, size_y-((93 / (size_y-2))+2), 1); //??
     box(picker, 0, 0);
 
@@ -60,17 +64,21 @@ void init_menu(int size_x, int size_y, int canvas_height, int canvas_width, char
 
     wrefresh(picker);
 
-    //tool picker
-    //todo
+    // tool picker
+    // todo
 }
 
 void init_ascii_list(char ascii_list[])
 {
+    // initializes the ascii list with all the valid characters
+
     for (int i = 0; i <= 93; i++) ascii_list[i] = i+33;
 }
 
 void update_canvas(WINDOW *c_win, char c[C_SIZE][C_SIZE], int *canvas_height, int *canvas_width, int row, int col, int prev_row, int prev_col)
 {
+    // updates the canvas window based on the selected canvas array
+
     for (int i = 0; i <= *canvas_height+1; i++)
     {
         for (int j = 0; j <= *canvas_width+1; j++)
@@ -88,9 +96,8 @@ void update_canvas(WINDOW *c_win, char c[C_SIZE][C_SIZE], int *canvas_height, in
 
 void draw_line(int line_1_x, int line_1_y, int line_2_x, int line_2_y, char canvas[C_SIZE][C_SIZE], char temp_canvas[C_SIZE][C_SIZE], int current_char, char ascii_list[93])
 {
-    // a temp canvas is created and the original canvas is copied every time the function is called
-    // the temporary line is drawn based on the current 4 coords
-    // if space is pressed again, the temp canvas is copied to the original
+    // draws a line from line_1 to line_2. uses a temporary canvas for the preview 
+
     for (int i = 0; i < C_SIZE; i++)
     {
         for (int j = 0; j < C_SIZE; j++)
@@ -109,16 +116,12 @@ void draw_line(int line_1_x, int line_1_y, int line_2_x, int line_2_y, char canv
         line_2_y = swap_y;
     }
 
-    // special case, horizontal line
+    // special case, horizontal line (might not be needed after horizontal scanline alg)
     if (line_1_x == line_2_x)
     {
         if (line_1_y <= line_2_y) for (int j = line_1_y; j <= line_2_y; j++) temp_canvas[line_1_x][j] = ascii_list[current_char];
         else for (int j = line_2_y; j <= line_1_y; j++) temp_canvas[line_1_x][j] = ascii_list[current_char];
     }
-
-    // line raster alg
-    // 1x, 1y - point 1
-    // 2x, 2y - point 2
     else
     {
         for (int i = 0; i < C_SIZE; i++)
@@ -130,6 +133,7 @@ void draw_line(int line_1_x, int line_1_y, int line_2_x, int line_2_y, char canv
             }
         }
     }
+    // to do: choose between vertical and horizontal rasterization dependin on the angle (calculate slope?)
 }
 
 int main()
@@ -187,6 +191,8 @@ int main()
             draw_line(line_1_x, line_1_y, line_2_x, line_2_y, canvas, temp_canvas, current_char, ascii_list);
         }
 
+        // inputs:
+
         if (input == ' ')
         {
             if (current_tool == 0) canvas[row][col] = ascii_list[current_char]; // brush tool
@@ -237,7 +243,6 @@ int main()
             current_char--; 
             init_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, line_1_x, line_1_y, line_2_x, line_2_y);
         }
-
         
         if (input == 'b')
         {
@@ -248,6 +253,8 @@ int main()
         {
             current_tool = 1;
         }
+
+        // update:
 
         if (drawing_line == 1) update_canvas(c_win, temp_canvas, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
         else update_canvas(c_win, canvas, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
