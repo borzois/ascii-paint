@@ -7,15 +7,23 @@ WINDOW *new_canvas(int size_x, int size_y, int *canvas_height, int *canvas_width
     // prompts the user to select a size for the new canvas and initializes it
     
     echo();
-    WINDOW *size_prompt = newwin(4, 26, (size_y-2)/2, (size_x-26)/2);
+    WINDOW *size_prompt = newwin(6, 32, (size_y-6)/2, (size_x-32)/2);
     box(size_prompt, 0, 0);
 
     // size prompt
-    mvwprintw(size_prompt, 1, 1, "Enter canvas size: ");
-    wscanw(size_prompt, "%d %d", canvas_height, canvas_width);
-    erase();
-    refresh();
-
+    int valid_size = 0;
+    while (!valid_size)
+    {
+    	mvwprintw(size_prompt, 1, 1, "Enter canvas size: ");
+    	wscanw(size_prompt, "%d %d", canvas_height, canvas_width);
+    	if (*canvas_height < (size_y-7) && *canvas_width < (size_x-7)) valid_size = 1;
+	erase();
+    	refresh();
+	if (valid_size) break;
+	werase(size_prompt);
+	mvwprintw(size_prompt, 3, 1, "Canvas is too large");
+	box(size_prompt, 0, 0);
+    }
     // clears the array 
     for (int i = 0; i < C_SIZE; i++)
     {
@@ -41,41 +49,64 @@ WINDOW *new_canvas(int size_x, int size_y, int *canvas_height, int *canvas_width
     return local_canvas;
 }
 
-void update_menu(int size_x, int size_y, int canvas_height, int canvas_width, char ascii_list[], int current_char, int current_tool, int line_1_x, int line_1_y, int line_2_x, int line_2_y)
+void update_menu(int size_x, int size_y, int canvas_height, int canvas_width, char ascii_list[], int current_char, int current_tool, int line_1_x, int line_1_y, int line_2_x, int line_2_y, int help_mode)
 {
-    // initializes/refreshes all the menu elements (rename to update_menu?)
+    // initializes/updates all the menu elements
     
     // top bar
     WINDOW *menu = newwin(1, size_x, 0, 0);
 
     wattr_on(menu, A_STANDOUT, NULL);
-    wprintw(menu, "Size: %dx%d | (F1) New Canvas | (F2) Save to file | Line: %d %d - %d %d", canvas_height, canvas_width, line_1_x, line_1_y, line_2_x, line_2_y);
+    wprintw(menu, "Size: %dx%d | (F1) Show/Hide Help | (F2) New Canvas | (F3) Save to file | (Q) Quit | Line: %d %d - %d %d", canvas_height, canvas_width, line_1_x, line_1_y, line_2_x, line_2_y);
     wrefresh(menu);
 
     // character picker
-    WINDOW *picker = newwin((93 / (size_y-2))+2, size_x-2, size_y-((93 / (size_y-2))+2), 1); //??
+    WINDOW *picker = newwin((93 / (size_y-2))+2, size_x-2, size_y-((93 / (size_y-2))+2), 1); // ??
     box(picker, 0, 0);
+    if (help_mode) mvwprintw(picker, 0, 3, "Use [ or ] to change");
 
     for (int i = 0; i <= 93; i++)
     {
-        mvwaddch(picker, i/(size_x-4)+1, (i%(size_x-4))+1, ascii_list[i]); //size-x - 4 per row
+        mvwaddch(picker, i/(size_x-4)+1, (i%(size_x-4))+1, ascii_list[i]); // size-x - 4 per row
         if (i == current_char) mvwaddch(picker, i/(size_x-4)+1, (i%(size_x-4))+1, ascii_list[i] | A_STANDOUT);
     }
 
     wrefresh(picker);
 
     // tool picker
-    WINDOW *tool_picker = newwin(7, 5, (size_y-canvas_height)/2, 1);
-    box(tool_picker, 0, 0);
-    if (current_tool == 0) wattr_on(tool_picker, A_STANDOUT, NULL);
-    mvwaddstr(tool_picker, 1, 1, " B ");
-    wattr_off(tool_picker, A_STANDOUT, NULL);
-    mvwhline(tool_picker, 2, 1, ACS_HLINE, 3);
-    if (current_tool == 1) wattr_on(tool_picker, A_STANDOUT, NULL);
-    mvwaddstr(tool_picker, 3, 1, " L ");
-    wattr_off(tool_picker, A_STANDOUT, NULL);
-    mvwhline(tool_picker, 4, 1, ACS_HLINE, 3);
-    mvwaddstr(tool_picker, 5, 1, " E ");
+    WINDOW *tool_picker;
+    if (help_mode) 
+    {
+        tool_picker = newwin(7, 10, (size_y-canvas_height)/2, 1);    
+        box(tool_picker, 0, 0);
+        if (current_tool == 0) wattr_on(tool_picker, A_STANDOUT, NULL);
+        mvwaddstr(tool_picker, 1, 1, " Brush ");
+        wattr_off(tool_picker, A_STANDOUT, NULL);
+        mvwhline(tool_picker, 2, 1, ACS_HLINE, 3);
+        if (current_tool == 1) wattr_on(tool_picker, A_STANDOUT, NULL);
+        mvwaddstr(tool_picker, 3, 1, " Line ");
+        wattr_off(tool_picker, A_STANDOUT, NULL);
+        mvwhline(tool_picker, 4, 1, ACS_HLINE, 3);
+        if (current_tool == 2) wattr_on(tool_picker, A_STANDOUT, NULL);
+        mvwaddstr(tool_picker, 5, 1, " Eraser ");
+        wattr_off(tool_picker, A_STANDOUT, NULL);
+    }
+    else
+    {
+        tool_picker = newwin(7, 5, (size_y-canvas_height)/2, 1);
+        box(tool_picker, 0, 0);
+    	if (current_tool == 0) wattr_on(tool_picker, A_STANDOUT, NULL);
+	mvwaddstr(tool_picker, 1, 1, " B ");
+    	wattr_off(tool_picker, A_STANDOUT, NULL);
+    	mvwhline(tool_picker, 2, 1, ACS_HLINE, 3);
+    	if (current_tool == 1) wattr_on(tool_picker, A_STANDOUT, NULL);
+    	mvwaddstr(tool_picker, 3, 1, " L ");
+    	wattr_off(tool_picker, A_STANDOUT, NULL);
+    	mvwhline(tool_picker, 4, 1, ACS_HLINE, 3);
+    	if (current_tool == 2) wattr_on(tool_picker, A_STANDOUT, NULL);
+    	mvwaddstr(tool_picker, 5, 1, " E ");
+    	wattr_off(tool_picker, A_STANDOUT, NULL);
+    }
     wrefresh(tool_picker);
 }
 
@@ -173,7 +204,7 @@ void export_to_file(char canvas[C_SIZE][C_SIZE], int size_x, int size_y, int can
 
 int main()
 {	
-	char canvas[C_SIZE][C_SIZE];
+    char canvas[C_SIZE][C_SIZE];
     char temp_canvas[C_SIZE][C_SIZE];
     char ascii_list[93];
     int current_tool = 0; // 0 - brush, 1 - line
@@ -186,6 +217,7 @@ int main()
 
     int line_1_x = 0, line_1_y = 0, line_2_x = 0, line_2_y = 0;
     int drawing_line = 0;
+    int help_mode = 0;
 
     WINDOW *c_win;
 
@@ -197,7 +229,7 @@ int main()
 
     c_win = new_canvas(size_x, size_y, &canvas_height, &canvas_width, canvas);
     init_ascii_list(ascii_list);
-    update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, line_1_x, line_1_y, line_2_x, line_2_y);
+    update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, line_1_x, line_1_y, line_2_x, line_2_y, help_mode);
     
 
     row = 1;
@@ -209,7 +241,7 @@ int main()
     box(c_win, 0, 0);
     wrefresh(c_win);
     int input = 0;
-    while (input != '`'){
+    while (input != 'q'){
         input = getch();
         prev_row = row;
         prev_col = col;
@@ -258,16 +290,26 @@ int main()
                     drawing_line = 0;
                 }
             }
+	    else if (current_tool == 2) canvas[row][col] = ' '; // eraser tool
         }
 
-        if (input == KEY_F(1))
+	if (input == KEY_F(1))
+	{
+	    if (!help_mode) help_mode = 1;
+	    else
+	    {
+		help_mode = 0;
+		erase();
+		refresh();
+	    }
+	}
+        if (input == KEY_F(2))
         {
             erase();
             refresh();
             c_win = new_canvas(size_x, size_y, &canvas_height, &canvas_width, canvas);
         }
-
-        if (input == KEY_F(2))
+        if (input == KEY_F(3))
         {
             export_to_file(canvas, size_x, size_y, canvas_height, canvas_width);
         }
@@ -284,18 +326,24 @@ int main()
         if (input == 'b')
         {
             current_tool = 0;
+	    drawing_line = 0;
         }
         
         if (input == 'l')
         {
             current_tool = 1;
         }
+	if (input == 'e')
+	{
+	    current_tool = 2;
+	    drawing_line = 0;
+	}
 
         // update:
 
         if (drawing_line == 1) update_canvas(c_win, temp_canvas, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
         else update_canvas(c_win, canvas, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
-        update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, line_1_x, line_1_y, line_2_x, line_2_y);
+        update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, line_1_x, line_1_y, line_2_x, line_2_y, help_mode);
     }
     
     endwin();
