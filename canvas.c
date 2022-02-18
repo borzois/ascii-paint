@@ -52,7 +52,7 @@ WINDOW *new_canvas(int size_x, int size_y, int *canvas_height, int *canvas_width
     return local_canvas;
 }
 
-void update_menu(int size_x, int size_y, int canvas_height, int canvas_width, char ascii_list[], int current_char, int current_tool, int line_1_x, int line_1_y, int line_2_x, int line_2_y, int help_mode)
+void update_menu(int size_x, int size_y, int canvas_height, int canvas_width, char ascii_list[], int current_char, int current_tool, int line_1_x, int line_1_y, int line_2_x, int line_2_y, int help_mode, int show_ui)
 {
     // initializes/updates all the menu elements
     
@@ -83,11 +83,11 @@ void update_menu(int size_x, int size_y, int canvas_height, int canvas_width, ch
         tool_picker = newwin(7, 10, (size_y-canvas_height)/2, 1);    
         box(tool_picker, 0, 0);
         if (current_tool == 0) wattr_on(tool_picker, A_STANDOUT, NULL);
-        mvwaddstr(tool_picker, 1, 1, " Brush ");
+        mvwaddstr(tool_picker, 1, 1, " Brush  ");
         wattr_off(tool_picker, A_STANDOUT, NULL);
         mvwhline(tool_picker, 2, 1, ACS_HLINE, 3);
         if (current_tool == 1) wattr_on(tool_picker, A_STANDOUT, NULL);
-        mvwaddstr(tool_picker, 3, 1, " Line ");
+        mvwaddstr(tool_picker, 3, 1, " Line   ");
         wattr_off(tool_picker, A_STANDOUT, NULL);
         mvwhline(tool_picker, 4, 1, ACS_HLINE, 3);
         if (current_tool == 2) wattr_on(tool_picker, A_STANDOUT, NULL);
@@ -111,6 +111,11 @@ void update_menu(int size_x, int size_y, int canvas_height, int canvas_width, ch
     	wattr_off(tool_picker, A_STANDOUT, NULL);
     }
     wrefresh(tool_picker);
+    if (!show_ui)
+    {
+	erase();
+	refresh();
+    }
 }
 
 void init_ascii_list(char ascii_list[])
@@ -221,6 +226,7 @@ int main()
     int line_1_x = 0, line_1_y = 0, line_2_x = 0, line_2_y = 0;
     int drawing_line = 0;
     int help_mode = 0;
+    int show_ui = 1;
 
     WINDOW *c_win;
 
@@ -232,7 +238,7 @@ int main()
 
     c_win = new_canvas(size_x, size_y, &canvas_height, &canvas_width, canvas);
     init_ascii_list(ascii_list);
-    update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, line_1_x, line_1_y, line_2_x, line_2_y, help_mode);
+    update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, line_1_x, line_1_y, line_2_x, line_2_y, help_mode, show_ui);
     
 
     row = 1;
@@ -316,7 +322,11 @@ int main()
         {
             export_to_file(canvas, size_x, size_y, canvas_height, canvas_width);
         }
-
+	if (input == KEY_F(4))
+	{
+	    if (show_ui == 1) show_ui = 0;
+	    else show_ui = 1;
+	}
         if (input == ']' && current_char < 93)
         {
             current_char++; 
@@ -344,9 +354,9 @@ int main()
 
         // update:
 
+	update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, line_1_x, line_1_y, line_2_x, line_2_y, help_mode, show_ui);
         if (drawing_line == 1) update_canvas(c_win, temp_canvas, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
         else update_canvas(c_win, canvas, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
-        update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, line_1_x, line_1_y, line_2_x, line_2_y, help_mode);
     }
     
     endwin();
