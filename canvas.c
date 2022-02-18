@@ -1,6 +1,6 @@
 #include <ncurses.h>
 
-#define C_SIZE 256
+#define C_SIZE 512
 
 WINDOW *new_canvas(int size_x, int size_y, int *canvas_height, int *canvas_width, char canvas[C_SIZE][C_SIZE])
 {
@@ -125,7 +125,7 @@ void init_ascii_list(char ascii_list[])
     for (int i = 0; i <= 93; i++) ascii_list[i] = i+33;
 }
 
-void update_canvas(WINDOW *c_win, char c[C_SIZE][C_SIZE], int *canvas_height, int *canvas_width, int row, int col, int prev_row, int prev_col)
+void update_canvas(WINDOW *c_win, char c[C_SIZE][C_SIZE], int start_x, int start_y, int *canvas_height, int *canvas_width, int row, int col, int prev_row, int prev_col)
 {
     // updates the canvas window based on the selected canvas array
 
@@ -133,7 +133,7 @@ void update_canvas(WINDOW *c_win, char c[C_SIZE][C_SIZE], int *canvas_height, in
     {
         for (int j = 0; j <= *canvas_width+1; j++)
         {
-            mvwaddch(c_win, i, j, c[i][j]);
+            mvwaddch(c_win, i, j, c[i+start_x][j+start_y]);
         }
     }
 
@@ -186,6 +186,29 @@ void draw_line(int line_1_x, int line_1_y, int line_2_x, int line_2_y, char canv
     // to do: choose between vertical and horizontal rasterization dependin on the angle (calculate slope?)
 }
 
+void move_selection(int sel_1_x, int sel_1_y, int sel_2_x, int sel_2_y, int x_offset, int y_offset, char canvas[C_SIZE][C_SIZE], char temp_canvas[C_SIZE][C_SIZE], int canvas_height, int canvas_width)
+{
+    if (y_offset > 0)
+	for (int i = (canvas_height*2)+2; i >= canvas_height+2; i--)
+	    for (int j = canvas_width+2; j <= (canvas_width*2)+2; j++)
+		temp_canvas[i+y_offset][j] = temp_canvas[i][j];
+
+    else if (y_offset < 0)
+	for (int i = canvas_height+2; i <= (canvas_height*2)+2; i++)
+	    for (int j = canvas_width+2; j <= (canvas_width*2)+2; j++)
+		temp_canvas[i+y_offset][j] = temp_canvas[i][j];
+
+    else if (x_offset > 0)
+	for (int j = (canvas_width*2)+2; j >= canvas_width+2; j--)
+	    for (int i = canvas_height+2; i <= (canvas_height*2)+2; i++)
+		temp_canvas[i][j+x_offset] = temp_canvas[i][j];
+
+    else if (x_offset < 0)
+	for (int j = canvas_width+2; j <= (canvas_width*2)+2; j++)
+	    for (int i = canvas_height+2; i <= (canvas_height*2)+2; i++)
+		temp_canvas[i][j+x_offset] = temp_canvas[i][j];
+}
+
 void export_to_file(char canvas[C_SIZE][C_SIZE], int size_x, int size_y, int canvas_height, int canvas_width)
 {
     char filename[32];
@@ -224,6 +247,7 @@ int main()
     int size_y = 0, size_x = 0;
 
     int line_1_x = 0, line_1_y = 0, line_2_x = 0, line_2_y = 0;
+    int sel_1_x = 0, sel_1_y = 0, sel_2_x = canvas_width, sel_2_y = canvas_height; // remember to update whenever a new canvas is made 
     int drawing_line = 0;
     int help_mode = 0;
     int show_ui = 1;
@@ -254,10 +278,20 @@ int main()
         input = getch();
         prev_row = row;
         prev_col = col;
-        if (input == KEY_UP && row > 1) row--;
-        if (input == KEY_DOWN && row < canvas_height) row++;
-        if (input == KEY_LEFT && col > 1) col--;
-        if (input == KEY_RIGHT && col < canvas_width) col++;
+	if (current_tool != 3)
+	{
+            if (input == KEY_UP && row > 1) row--;
+            if (input == KEY_DOWN && row < canvas_height) row++;
+            if (input == KEY_LEFT && col > 1) col--;
+            if (input == KEY_RIGHT && col < canvas_width) col++;
+	}
+	else // move mode
+	{
+            if (input == KEY_UP) move_selection(sel_1_x, sel_1_y, sel_2_x, sel_2_y, 0, -1, canvas, temp_canvas, canvas_height, canvas_width);
+            if (input == KEY_DOWN) move_selection(sel_1_x, sel_1_y, sel_2_x, sel_2_y, 0, 1, canvas, temp_canvas, canvas_height, canvas_width);
+            if (input == KEY_LEFT) move_selection(sel_1_x, sel_1_y, sel_2_x, sel_2_y, -1, 0, canvas, temp_canvas, canvas_height, canvas_width);
+            if (input == KEY_RIGHT) move_selection(sel_1_x, sel_1_y, sel_2_x, sel_2_y, 1, 0, canvas, temp_canvas, canvas_height, canvas_width);
+	}
 
         if (drawing_line == 1)
         {
@@ -300,6 +334,17 @@ int main()
                 }
             }
 	    else if (current_tool == 2) canvas[row][col] = ' '; // eraser tool
+	    else if (current_tool == 3) // move tool
+	    {
+		for (int i = 0; i <= canvas_height+1; i++)
+                {
+                    for (int j = 0; j <= canvas_width+1; j++)
+                    {
+                        canvas[i][j] = temp_canvas[i+canvas_height+2][j+canvas_width+2];
+                    }
+		}
+		current_tool = 1;
+	    }
         }
 
 	if (input == KEY_F(1))
@@ -351,12 +396,25 @@ int main()
 	    current_tool = 2;
 	    drawing_line = 0;
 	}
+	if (input == 'm')
+	{
+	    current_tool = 3;
+	    drawing_line = 0;
+	    for (int i = 0; i <= canvas_height+1; i++)
+   	    {
+        	for (int j = 0; j <= canvas_width+1; j++)
+                {
+            	    temp_canvas[i+canvas_height+2][j+canvas_width+2] = canvas[i][j];
+		}
+	    }
+	}
 
         // update:
 
 	update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, line_1_x, line_1_y, line_2_x, line_2_y, help_mode, show_ui);
-        if (drawing_line == 1) update_canvas(c_win, temp_canvas, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
-        else update_canvas(c_win, canvas, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
+        if (drawing_line == 1) update_canvas(c_win, temp_canvas, 0, 0, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
+	else if (current_tool == 3) update_canvas(c_win, temp_canvas, canvas_height+2, canvas_width+2, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
+        else update_canvas(c_win, canvas, 0, 0, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
     }
     
     endwin();
