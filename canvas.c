@@ -14,15 +14,18 @@ WINDOW *new_canvas(int size_x, int size_y, int *canvas_height, int *canvas_width
     int valid_size = 0;
     while (!valid_size)
     {
-    	mvwprintw(size_prompt, 1, 1, "Enter canvas size: ");
-    	wscanw(size_prompt, "%d %d", canvas_height, canvas_width);
+        mvwprintw(size_prompt, 1, 1, "Enter canvas width: ");
+        wscanw(size_prompt, "%d", canvas_width);
+    	mvwprintw(size_prompt, 1, 1, "Enter canvas height:     ");
+        wmove(size_prompt, 1, 22);
+    	wscanw(size_prompt, "%d", canvas_height);
     	if (*canvas_height < (size_y-7) && *canvas_width < (size_x-7)) valid_size = 1;
-	erase();
-    	refresh();
-	if (valid_size) break;
-	werase(size_prompt);
-	mvwprintw(size_prompt, 3, 1, "Canvas is too large");
-	box(size_prompt, 0, 0);
+	    erase();
+        refresh();
+	    if (valid_size) break;
+	    werase(size_prompt);
+	    mvwprintw(size_prompt, 3, 1, "Canvas is too large");
+	    box(size_prompt, 0, 0);
     }
     // clears the array 
     for (int i = 0; i < C_SIZE; i++)
