@@ -14,10 +14,12 @@ WINDOW *new_canvas(int size_x, int size_y, int *canvas_height, int *canvas_width
     int valid_size = 0;
     while (!valid_size)
     {
-        mvwprintw(size_prompt, 1, 1, "Enter canvas width: ");
+        mvwprintw(size_prompt, 1, 1, "Max size: %d", size_x-8);
+        mvwprintw(size_prompt, 2, 1, "Enter canvas width: ");
         wscanw(size_prompt, "%d", canvas_width);
-    	mvwprintw(size_prompt, 1, 1, "Enter canvas height:     ");
-        wmove(size_prompt, 1, 22);
+    	mvwprintw(size_prompt, 1, 1, "Max size:  %d", size_y-8);
+        mvwprintw(size_prompt, 2, 1, "Enter canvas height:       ");
+        wmove(size_prompt, 2, 22);
     	wscanw(size_prompt, "%d", canvas_height);
     	if (*canvas_height < (size_y-7) && *canvas_width < (size_x-7)) valid_size = 1;
 	    erase();
