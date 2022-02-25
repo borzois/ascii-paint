@@ -190,7 +190,7 @@ void draw_line(int line_1_x, int line_1_y, int line_2_x, int line_2_y, char canv
 
 void move_selection(int sel_1_x, int sel_1_y, int sel_2_x, int sel_2_y, int x_offset, int y_offset, char canvas[C_SIZE][C_SIZE], char temp_canvas[C_SIZE][C_SIZE], int canvas_height, int canvas_width)
 {
-    if (y_offset > 0)
+    /*if (y_offset > 0)
 	for (int i = (canvas_height*2)+2; i >= canvas_height+2; i--)
 	    for (int j = canvas_width+2; j <= (canvas_width*2)+2; j++)
 		temp_canvas[i+y_offset][j] = temp_canvas[i][j];
@@ -209,7 +209,29 @@ void move_selection(int sel_1_x, int sel_1_y, int sel_2_x, int sel_2_y, int x_of
 	for (int j = canvas_width+2; j <= (canvas_width*2)+2; j++)
 	    for (int i = canvas_height+2; i <= (canvas_height*2)+2; i++)
 		temp_canvas[i][j+x_offset] = temp_canvas[i][j];
+    */
+
+    if (y_offset > 0) // down
+	for (int i = C_SIZE-2; i >= 0; i--)
+	    for (int j = 0; j < C_SIZE; j++)
+		temp_canvas[i+y_offset][j] = temp_canvas[i][j];
+
+    else if (y_offset < 0) // up
+	for (int i = 1; i < C_SIZE; i++)
+	    for (int j = 0; j < C_SIZE; j++)
+		temp_canvas[i+y_offset][j] = temp_canvas[i][j];
+
+    else if (x_offset > 0) // right
+	for (int j = C_SIZE-2; j >= 0; j--)
+	    for (int i = 0; i < C_SIZE; i++)
+		temp_canvas[i][j+x_offset] = temp_canvas[i][j];
+
+    else if (x_offset < 0) // left
+	for (int j = 1; j < C_SIZE; j++)
+	    for (int i = 0; i < C_SIZE; i++)
+		temp_canvas[i][j+x_offset] = temp_canvas[i][j];
 }
+
 
 void export_to_file(char canvas[C_SIZE][C_SIZE], int size_x, int size_y, int canvas_height, int canvas_width)
 {
