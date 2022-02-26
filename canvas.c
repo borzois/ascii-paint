@@ -1,10 +1,16 @@
 #include <ncurses.h>
+#include <string.h>
 
 #define C_SIZE 512
 
 typedef struct {
     int line_1_x, line_1_y, line_2_x, line_2_y;
 } line;
+
+typedef struct {
+	int row;
+	int col;
+} position;
 
 WINDOW *new_canvas(int size_x, int size_y, int *canvas_height, int *canvas_width, char canvas[C_SIZE][C_SIZE])
 {
@@ -119,7 +125,7 @@ void init_ascii_list(char ascii_list[])
 		ascii_list[i] = i+33;
 }
 
-void update_canvas(WINDOW *c_win, char c[C_SIZE][C_SIZE], int start_x, int start_y, int *canvas_height, int *canvas_width, int row, int col, int prev_row, int prev_col)
+void update_canvas(WINDOW *c_win, char c[C_SIZE][C_SIZE], int start_x, int start_y, int *canvas_height, int *canvas_width, position pos, position prev_pos)
 {
 	// updates the canvas window based on the selected canvas array
 
@@ -127,9 +133,9 @@ void update_canvas(WINDOW *c_win, char c[C_SIZE][C_SIZE], int start_x, int start
 		for (int j = 0; j <= *canvas_width+1; j++)
 			mvwaddch(c_win, i, j, c[i+start_x][j+start_y]);
 
-	mvwaddch(c_win, row, col, c[row][col] | A_STANDOUT);
-	if(prev_row != row || prev_col != col) 
-		mvwaddch(c_win, prev_row, prev_col, c[prev_row][prev_col] | A_NORMAL);
+	mvwaddch(c_win, pos.row, pos.col, c[pos.row][pos.col] | A_STANDOUT);
+	if(prev_pos.row != pos.row || prev_pos.col != pos.col) 
+		mvwaddch(c_win, prev_pos.row, prev_pos.col, c[prev_pos.row][prev_pos.col] | A_NORMAL);
 
 	box(c_win, 0, 0);
 	wrefresh(c_win);
@@ -196,22 +202,26 @@ void export_to_file(char canvas[C_SIZE][C_SIZE], int size_x, int size_y, int can
 	char filename[32];
 
 	echo();
-	WINDOW *filename_prompt = newwin(4, 26, (size_y-2)/2, (size_x-26)/2);
+	WINDOW *filename_prompt = newwin(4, 32, (size_y-2)/2, (size_x-32)/2);
 	box(filename_prompt, 0, 0);
 
-	mvwprintw(filename_prompt, 1, 1, "Enter filename: ");
-	wscanw(filename_prompt, "%s", filename);
+	mvwprintw(filename_prompt, 1, 1, "Enter filename:           .txt");
+	wmove(filename_prompt, 1, 17);
+	int len = wscanw(filename_prompt, "%s", filename);
+
+	if (len != 0) {   // fix
+		strcat(filename, ".txt");
+		FILE *f = fopen(filename, "w");
+		for (int i = 1; i <= canvas_height+1; i++) {
+			fwrite(canvas[i], 1, canvas_width+1, f);
+			fprintf(f, "\n");
+		}
+		fclose(f);
+	}
+
 	erase();
 	noecho();
 	refresh();
-
-	FILE *f = fopen(filename, "w");
-	for (int i = 1; i <= canvas_height+1; i++) {
-		fwrite(canvas[i], 1, canvas_width+1, f);
-		fprintf(f, "\n");
-	}
-
-	fclose(f);
 }
 
 int main()
@@ -219,16 +229,19 @@ int main()
 	char canvas[C_SIZE][C_SIZE];
 	char temp_canvas[C_SIZE][C_SIZE];
 	char ascii_list[93];
-	int current_tool = 0; // 0 - brush, 1 - line
+	int current_tool = 0; 
 	int current_char = 0;
 
-	int row = 2;
-	int col = 2;
 	int canvas_height = 20, canvas_width = 64;
 	int size_y = 0, size_x = 0;
 
+	position pos, prev_pos;
+	pos.row = 1, pos.col = 1;
+	prev_pos.row = 1, prev_pos.col = 1;
+
 	line new_line;
 	new_line.line_1_x = 0, new_line.line_1_y = 0, new_line.line_2_x = 0, new_line.line_2_y = 0;
+
 	int sel_1_x = 0, sel_1_y = 0, sel_2_x = canvas_width, sel_2_y = canvas_height; // remember to update whenever a new canvas is made 
 	int drawing_line = 0;
 	int help_mode = 0;
@@ -246,53 +259,46 @@ int main()
 	init_ascii_list(ascii_list);
 	update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, new_line, help_mode, show_ui);
 
-	row = 1;
-	col = 1;
-	int prev_row = 1, prev_col = 1;
-
 	noecho();
-	mvwaddch(c_win, row, col, canvas[row-2][col-2] | A_STANDOUT);
+	mvwaddch(c_win, pos.row, pos.col, ' ' | A_STANDOUT);
 	box(c_win, 0, 0);
 	wrefresh(c_win);
 	int input = 0;
 
 	while (input != 'q'){
 		input = getch();
-		prev_row = row;
-		prev_col = col;
+		prev_pos.row = pos.row;
+		prev_pos.col = pos.col;
 
 		// arrow keys
 		if (current_tool != 3) {
-			if (input == KEY_UP && row > 1) row--;
-			if (input == KEY_DOWN && row < canvas_height) row++;
-			if (input == KEY_LEFT && col > 1) col--;
-			if (input == KEY_RIGHT && col < canvas_width) col++;
+			if (input == KEY_UP && pos.row > 1) pos.row--;
+			if (input == KEY_DOWN && pos.row < canvas_height) pos.row++;
+			if (input == KEY_LEFT && pos.col > 1) pos.col--;
+			if (input == KEY_RIGHT && pos.col < canvas_width) pos.col++;
 		} else { // move mode
 			if (input == KEY_UP) move_selection(sel_1_x, sel_1_y, sel_2_x, sel_2_y, 0, -1, canvas, temp_canvas, canvas_height, canvas_width);
 			if (input == KEY_DOWN) move_selection(sel_1_x, sel_1_y, sel_2_x, sel_2_y, 0, 1, canvas, temp_canvas, canvas_height, canvas_width);
 			if (input == KEY_LEFT) move_selection(sel_1_x, sel_1_y, sel_2_x, sel_2_y, -1, 0, canvas, temp_canvas, canvas_height, canvas_width);
 			if (input == KEY_RIGHT) move_selection(sel_1_x, sel_1_y, sel_2_x, sel_2_y, 1, 0, canvas, temp_canvas, canvas_height, canvas_width);
 		}
-
 		// update after moving
 		if (drawing_line == 1) {
-			new_line.line_2_x = row;
-			new_line.line_2_y = col;
+			new_line.line_2_x = pos.row;
+			new_line.line_2_y = pos.col;
 			draw_line(new_line, canvas, temp_canvas, current_char, ascii_list);
         }
-
-		// inputs
 
 		// space/enter's function depends on the current tool
 		if (input == ' ' || input == KEY_ENTER) {
 			if (current_tool == 0)               // brush tool
-				canvas[row][col] = ascii_list[current_char]; 
+				canvas[pos.row][pos.col] = ascii_list[current_char]; 
 
 			else if (current_tool == 1) {        // line tool
 				if (drawing_line == 0) {         // initializes a new line
 					drawing_line = 1;
-					new_line.line_1_x = row;
-					new_line.line_1_y = col;
+					new_line.line_1_x = pos.row;
+					new_line.line_1_y = pos.col;
 					for (int i = 0; i < C_SIZE; i++) 
 						for (int j = 0; j < C_SIZE; j++) 
 							temp_canvas[i][j] = canvas[i][j];
@@ -305,9 +311,9 @@ int main()
 			}
 
 			else if (current_tool == 2) 
-				canvas[row][col] = ' ';          // eraser tool
+				canvas[pos.row][pos.col] = ' ';          // eraser tool
 
-			else if (current_tool == 3) {         // move tool - applies the transformation and sets the tool back to brush
+			else if (current_tool == 3) {        // move tool - applies the transformation and sets the tool back to brush
 				for (int i = 0; i <= canvas_height+1; i++)
 						for (int j = 0; j <= canvas_width+1; j++)
 							canvas[i][j] = temp_canvas[i+canvas_height+2][j+canvas_width+2];
@@ -382,9 +388,9 @@ int main()
 
         // updates
         update_menu(size_x, size_y, canvas_height, canvas_width, ascii_list, current_char, current_tool, new_line, help_mode, show_ui);
-        if (drawing_line == 1) update_canvas(c_win, temp_canvas, 0, 0, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
-        else if (current_tool == 3) update_canvas(c_win, temp_canvas, canvas_height+2, canvas_width+2, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
-        else update_canvas(c_win, canvas, 0, 0, &canvas_height, &canvas_width, row, col, prev_row, prev_col);
+        if (drawing_line == 1) update_canvas(c_win, temp_canvas, 0, 0, &canvas_height, &canvas_width, pos, prev_pos);
+        else if (current_tool == 3) update_canvas(c_win, temp_canvas, canvas_height+2, canvas_width+2, &canvas_height, &canvas_width, pos, prev_pos);
+        else update_canvas(c_win, canvas, 0, 0, &canvas_height, &canvas_width, pos, prev_pos);
     }
     
     endwin();
