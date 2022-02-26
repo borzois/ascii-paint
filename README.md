@@ -2,7 +2,9 @@
 Small terminal based ascii art canvas
 
 ### Building
-Compile using -lncurses
+`make`
+
+Or compile manually using -lncurses
 
 `gcc -o ascii-paint ascii-paint.c -lncurses`
 
